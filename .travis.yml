@@ -1,47 +1,46 @@
-os: linux
-dist: focal
+dist: bionic
 language: python
+python: "3.8"
 
-python:
-  - 3.8
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install -y git zip unzip openjdk-11-jdk
+  - sudo apt-get install -y build-essential libssl-dev libffi-dev python3-dev
+  - sudo apt-get install -y autoconf libtool pkg-config zlib1g-dev libncurses5-dev
+  - sudo apt-get install -y libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev
+  - sudo apt-get install -y libsqlite3-dev wget liblzma-dev
 
 install:
-  - sudo apt -y install python3-distutils
-  - sudo apt -y install python3-pip
-  - sudo apt install -y git
-  - git clone https://github.com/kivy/buildozer.git
-  - python3 -m site
-  - ls -l
-  - cd buildozer
-  - ls -l
-  - python3 setup.py install
-  - ls -l
-  - cd ..
-  - ls -l
+  - pip install --upgrade pip wheel setuptools
+  - pip install buildozer cython==0.29.19
 
-  - sudo apt update
-  - sudo apt install -y git zip unzip openjdk-8-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
-  - pip3 install --upgrade Cython==0.29.19 virtualenv
-  - export PATH=$PATH:~/.local/bin/
-  - ls -la
-  - echo "TODO COMPILE 32bit"
-  - yes | cp -f buildozer-32bit.spec buildozer.spec
-  - yes | travis_wait 20 buildozer android debug
-  - ls -la
-  - ls bin/ -l
-  - echo "TODO"
-  - gem install dpl --pre
-  - dpl releases --token $GITHUB_TOKEN --file "bin/mortgagecalculator-2.3-armeabi-v7a-debug.apk" --tag_name "v.2.3"
-  - echo "TODO COMPILE 64bit"
-  - ls -la
-  - rm -r -f .buildozer
-  - ls -la
-  - yes | cp -f buildozer-64bit.spec buildozer.spec
-  - yes | travis_wait 20 buildozer android debug
-  - ls -la
-  - ls bin/ -l
-  - echo "TODO"
-  - gem install dpl --pre
-  - dpl releases --token $GITHUB_TOKEN --file "bin/counterapp.apk" --tag_name "v.2.3"
 script:
-  - echo "OK"
+  - echo "Starting Buildozer build..."
+  - buildozer -v android debug
+
+before_cache:
+  - rm -rf $HOME/.buildozer/android/platform/android-sdk/tools
+  - rm -rf $HOME/.buildozer/android/platform/android-ndk-r19c/sources
+  - rm -rf $HOME/.buildozer/android/platform/android-ndk-r19c/toolchains/llvm/prebuilt/linux-x86_64/lib64/clang
+
+cache:
+  directories:
+    - $HOME/.buildozer
+    - $HOME/.gradle/caches/
+    - .buildozer
+
+before_deploy:
+  - echo "Preparing APK for deployment..."
+  - ls -la bin/
+  - export APK_FILE=$(find bin -name "*.apk" | head -n 1)
+  - echo "APK file: $APK_FILE"
+
+deploy:
+  provider: releases
+  api_key:
+    secure: YOUR_GITHUB_TOKEN_HERE
+  file_glob: true
+  file: bin/*.apk
+  skip_cleanup: true
+  on:
+    tags: true
